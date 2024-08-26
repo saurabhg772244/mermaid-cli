@@ -108,6 +108,7 @@ async function cli () {
   commander
     .version(pkg.version)
     .addOption(new Option('-t, --theme [theme]', 'Theme of the chart').choices(['default', 'forest', 'dark', 'neutral']).default('default'))
+    .addOption(new Option('-l --layout [layout]', 'Layout of the chart').choices(['dagre','elk']).default('dagre'))
     .addOption(new Option('-w, --width [width]', 'Width of the page').argParser(parseCommanderInt).default(800))
     .addOption(new Option('-H, --height [height]', 'Height of the page').argParser(parseCommanderInt).default(600))
     .option('-i, --input <input>', 'Input mermaid file. Files ending in .md will be treated as Markdown and all charts (e.g. ```mermaid (...)``` or :::mermaid (...):::) will be extracted and generated. Use `-` to read from stdin.')
@@ -125,7 +126,7 @@ async function cli () {
 
   const options = commander.opts()
 
-  let { theme, width, height, input, output, outputFormat, backgroundColor, configFile, cssFile, svgId, puppeteerConfigFile, scale, pdfFit, quiet } = options
+  let { theme, width, height, input, output, outputFormat, backgroundColor, configFile, cssFile, svgId, puppeteerConfigFile, scale, pdfFit, quiet, layout } = options
 
   // check input file
   if (!input) {
@@ -160,7 +161,7 @@ async function cli () {
   }
 
   // check config files
-  let mermaidConfig = { theme }
+  let mermaidConfig = { theme, layout }
   if (configFile) {
     checkConfigFile(configFile)
     mermaidConfig = Object.assign(mermaidConfig, JSON.parse(fs.readFileSync(configFile, 'utf-8')))
@@ -262,10 +263,12 @@ async function renderMermaid (browser, definition, outputFormat, { viewport, bac
        * so that they get correctly bundled.
        * @property {import("mermaid")["default"]} mermaid Already imported mermaid instance
        * @property {import("@mermaid-js/mermaid-zenuml")["default"]} zenuml Already imported mermaid-zenuml instance
+       * @property {import("@mermaid-js/layout-elk")["default"]} elkLayouts Already imported mermaid-elkLayouts instance
        */
-      const { mermaid, zenuml } = /** @type {GlobalThisWithMermaid & typeof globalThis} */ (globalThis)
+      const { mermaid, zenuml, elkLayouts } = /** @type {GlobalThisWithMermaid & typeof globalThis} */ (globalThis)
 
       await mermaid.registerExternalDiagrams([zenuml])
+      mermaid.registerLayoutLoaders(elkLayouts)
       mermaid.initialize({ startOnLoad: false, ...mermaidConfig })
       // should throw an error if mmd diagram is invalid
       const { svg: svgText } = await mermaid.render(svgId || 'my-svg', definition, container)
